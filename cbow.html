@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Embeddings Explorer</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c7c7c7; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8; 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef, Fragment } = React;
+
+        // --- Translations ---
+        const TRANSLATIONS = {
+            en: {
+                title: "Word Embeddings Explorer",
+                step: "Step",
+                of: "of",
+                process: "Process",
+                prev: "Previous",
+                next: "Next Step",
+                steps: {
+                    1: { title: "Corpus", desc: "Assemble the raw text source." },
+                    2: { title: "Vocabulary", desc: "Filter and choose distinct words (M)." },
+                    3: { title: "Context Window", desc: "Define sliding window size (C)." },
+                    4: { title: "Dictionary", desc: "Build co-occurrence statistics." },
+                    5: { title: "Dimensions", desc: "Choose embedding size (N)." },
+                    6: { title: "Initialize", desc: "Create random matrices E and U." },
+                    7: { title: "Train", desc: "Learn via Dot Product & Gradient Descent." },
+                    8: { title: "Finalize", desc: "Discard U, keep E." },
+                },
+                s1: {
+                    label: "Edit Corpus Text:",
+                    count: "Word Count:",
+                    info: "Why this matters: The corpus determines everything. If 'Shakespeare' is the corpus, the model learns 'thou' is related to 'shalt'.",
+                    defaultText: "Thou shalt not make a machine in the likeness of a human mind"
+                },
+                s2: {
+                    filtering: "Filtering",
+                    vocabLimit: "Vocabulary Size Limit (M)",
+                    strict: "Strict",
+                    current: "Current",
+                    words: "words",
+                    all: "All",
+                    resulting: "Resulting Vocabulary",
+                    ignored: "ignored",
+                    preprocessing: "Preprocessing applied:",
+                    rules: [
+                        "Lowercase conversion (The → the)",
+                        "Punctuation removal (mind. → mind)",
+                        "Whitespace normalization"
+                    ]
+                },
+                s3: {
+                    windowSize: "Window Size (C):",
+                    target: "Target (t)",
+                    context: "Context",
+                    explainer: (n) => `We look ${n} words to the left and ${n} words to the right.`
+                },
+                s4: {
+                    targetHead: "Target Word",
+                    contextHead: "Context Words (C={n})",
+                    info: "This dictionary is built by sliding the window across the entire corpus and aggregating results. Notice how 'a' appears multiple times, so its list combines context from all appearances.",
+                    noContext: "No context in window"
+                },
+                s5: {
+                    title: "Choose Dimension (N)",
+                    tiny: "Tiny",
+                    small: "Small",
+                    info: "Real world embeddings like Word2Vec or GloVe typically use N = 300. Higher N captures more subtle semantic relationships but costs more memory."
+                },
+                s6: {
+                    info: "We create two random matrices. E is for when a word is the Target. U is for when a word is part of the Context.",
+                    tableE: "Table E (Target Embeddings)",
+                    tableU: "Table U (Context Embeddings)",
+                    reinit: "Re-Initialize Randomly"
+                },
+                s7: {
+                    info: "We slide the window, pick a Target (t) and a Context (u), compute their dot product, squashing it to 0-1. If they are neighbors, we want the result to be 1.",
+                    trainBtn: "Train One Pair",
+                    stepsTaken: "Steps Taken:",
+                    calcTitle: "Training Calculation",
+                    target: "Target Word (t)",
+                    context: "Context Word (u)",
+                    dot: "Dot Product (t · u)",
+                    pred: "Prediction (Sigmoid)",
+                    backprop: "Backpropagation",
+                    label: "Target Label",
+                    error: "Error (1 - pred)",
+                    adjustment: "Vectors adjusted by learning rate * error",
+                    matrixE: "Matrix E (Target)",
+                    matrixU: "Matrix U (Context)",
+                    updating: "Updating:"
+                },
+                s8: {
+                    complete: "Training Complete!",
+                    info: "After thousands of passes (epochs), Table E is our final product. Table U is typically discarded.",
+                    finalEmbed: "Final Embeddings (Table E)",
+                    heatmap: "*Darker blue = Higher activation magnitude",
+                    whatNow: "What can we do now?",
+                    semantic: { title: "Semantic Search", desc: "Find documents about 'food' even if the query is 'dinner'."},
+                    math: { title: "Vector Math", desc: "King - Man + Woman ≈ Queen."},
+                    cluster: { title: "Clustering", desc: "Group news articles automatically by topic."}
+                }
+            },
+            es: {
+                title: "Explorador de Embeddings",
+                step: "Paso",
+                of: "de",
+                process: "Proceso",
+                prev: "Anterior",
+                next: "Siguiente",
+                steps: {
+                    1: { title: "Corpus", desc: "Reunir la fuente de texto." },
+                    2: { title: "Vocabulario", desc: "Filtrar y elegir palabras distintas (M)." },
+                    3: { title: "Ventana", desc: "Definir tamaño de ventana deslizante (C)." },
+                    4: { title: "Diccionario", desc: "Construir estadísticas de co-ocurrencia." },
+                    5: { title: "Dimensiones", desc: "Elegir tamaño de incrustación (N)." },
+                    6: { title: "Inicializar", desc: "Crear matrices aleatorias E y U." },
+                    7: { title: "Entrenar", desc: "Aprender vía Producto Punto y Gradiente." },
+                    8: { title: "Finalizar", desc: "Descartar U, mantener E." },
+                },
+                s1: {
+                    label: "Editar Texto del Corpus:",
+                    count: "Palabras:",
+                    info: "El corpus lo determina todo. Si 'Shakespeare' es el corpus, el modelo aprende relaciones antiguas. Si es Wikipedia, aprende hechos modernos.",
+                    defaultText: "No harás una máquina a semejanza de la mente humana"
+                },
+                s2: {
+                    filtering: "Filtrado",
+                    vocabLimit: "Límite de Vocabulario (M)",
+                    strict: "Estricto",
+                    current: "Actual",
+                    words: "palabras",
+                    all: "Todo",
+                    resulting: "Vocabulario Resultante",
+                    ignored: "ignorado",
+                    preprocessing: "Preprocesamiento aplicado:",
+                    rules: [
+                        "Conversión a minúsculas",
+                        "Eliminación de puntuación",
+                        "Normalización de espacios"
+                    ]
+                },
+                s3: {
+                    windowSize: "Tamaño de Ventana (C):",
+                    target: "Objetivo (t)",
+                    context: "Contexto",
+                    explainer: (n) => `Miramos ${n} palabras a la izquierda y ${n} palabras a la derecha.`
+                },
+                s4: {
+                    targetHead: "Palabra Objetivo",
+                    contextHead: "Palabras de Contexto (C={n})",
+                    info: "Este diccionario se construye deslizando la ventana por todo el corpus y agregando resultados.",
+                    noContext: "Sin contexto"
+                },
+                s5: {
+                    title: "Elegir Dimensión (N)",
+                    tiny: "Diminuto",
+                    small: "Pequeño",
+                    info: "Embeddings reales usan N = 300. Un N mayor captura relaciones más sutiles pero usa más memoria."
+                },
+                s6: {
+                    info: "Creamos dos matrices aleatorias. E es para palabras Objetivo. U es para palabras de Contexto.",
+                    tableE: "Tabla E (Incrustaciones Objetivo)",
+                    tableU: "Tabla U (Incrustaciones Contexto)",
+                    reinit: "Re-inicializar Aleatoriamente"
+                },
+                s7: {
+                    info: "Deslizamos la ventana, calculamos producto punto (0-1). Si son vecinos, queremos que sea 1.",
+                    trainBtn: "Entrenar un Par",
+                    stepsTaken: "Pasos:",
+                    calcTitle: "Cálculo de Entrenamiento",
+                    target: "Palabra Objetivo (t)",
+                    context: "Palabra Contexto (u)",
+                    dot: "Producto Punto (t · u)",
+                    pred: "Predicción (Sigmoide)",
+                    backprop: "Retropropagación",
+                    label: "Etiqueta",
+                    error: "Error (1 - pred)",
+                    adjustment: "Vectores ajustados por error",
+                    matrixE: "Matriz E (Objetivo)",
+                    matrixU: "Matriz U (Contexto)",
+                    updating: "Actualizando:"
+                },
+                s8: {
+                    complete: "¡Entrenamiento Completo!",
+                    info: "Después de miles de pases, Tabla E es el producto final. Tabla U se descarta.",
+                    finalEmbed: "Incrustaciones Finales (Tabla E)",
+                    heatmap: "*Azul más oscuro = Mayor magnitud",
+                    whatNow: "¿Qué hacer ahora?",
+                    semantic: { title: "Búsqueda Semántica", desc: "Encontrar 'comida' aunque busques 'cena'."},
+                    math: { title: "Matemática Vectorial", desc: "Rey - Hombre + Mujer ≈ Reina."},
+                    cluster: { title: "Agrupamiento", desc: "Agrupar noticias por tema."}
+                }
+            },
+            de: {
+                title: "Worteinbettungs-Explorer",
+                step: "Schritt",
+                of: "von",
+                process: "Prozess",
+                prev: "Zurück",
+                next: "Weiter",
+                steps: {
+                    1: { title: "Korpus", desc: "Sammeln Sie den Rohtext." },
+                    2: { title: "Vokabular", desc: "Filtern und wählen Sie Wörter (M)." },
+                    3: { title: "Kontextfenster", desc: "Definieren Sie die Fenstergröße (C)." },
+                    4: { title: "Wörterbuch", desc: "Erstellen Sie Ko-Vorkommens-Statistiken." },
+                    5: { title: "Dimensionen", desc: "Wählen Sie Einbettungsgröße (N)." },
+                    6: { title: "Initialisierung", desc: "Erstellen Sie zufällige Matrizen E und U." },
+                    7: { title: "Training", desc: "Lernen durch Skalarprodukt & Gradientenabstieg." },
+                    8: { title: "Abschluss", desc: "Verwerfen Sie U, behalten Sie E." },
+                },
+                s1: {
+                    label: "Korpus-Text bearbeiten:",
+                    count: "Wortanzahl:",
+                    info: "Der Korpus bestimmt alles. Ein Shakespeare-Korpus lernt andere Beziehungen als ein Wikipedia-Korpus.",
+                    defaultText: "Du sollst keine Maschine nach dem Bildnis des menschlichen Geistes machen"
+                },
+                s2: {
+                    filtering: "Filterung",
+                    vocabLimit: "Vokabulargröße (M)",
+                    strict: "Strikt",
+                    current: "Aktuell",
+                    words: "Wörter",
+                    all: "Alle",
+                    resulting: "Resultierendes Vokabular",
+                    ignored: "ignoriert",
+                    preprocessing: "Angewandte Vorverarbeitung:",
+                    rules: [
+                        "Kleinschreibung",
+                        "Entfernung von Satzzeichen",
+                        "Normalisierung von Leerzeichen"
+                    ]
+                },
+                s3: {
+                    windowSize: "Fenstergröße (C):",
+                    target: "Ziel (t)",
+                    context: "Kontext",
+                    explainer: (n) => `Wir schauen ${n} Wörter nach links und ${n} Wörter nach rechts.`
+                },
+                s4: {
+                    targetHead: "Zielwort",
+                    contextHead: "Kontextwörter (C={n})",
+                    info: "Dieses Wörterbuch entsteht durch das Schieben des Fensters über den gesamten Korpus.",
+                    noContext: "Kein Kontext"
+                },
+                s5: {
+                    title: "Dimension wählen (N)",
+                    tiny: "Winzig",
+                    small: "Klein",
+                    info: "Echte Einbettungen wie Word2Vec nutzen typischerweise N = 300. Größeres N erfasst feinere Beziehungen."
+                },
+                s6: {
+                    info: "Wir erstellen zwei Zufallsmatrizen. E ist für Zielwörter. U ist für Kontextwörter.",
+                    tableE: "Tabelle E (Zieleinbettungen)",
+                    tableU: "Tabelle U (Kontexteinbettungen)",
+                    reinit: "Neu initialisieren"
+                },
+                s7: {
+                    info: "Wir verschieben das Fenster, berechnen das Skalarprodukt (0-1). Nachbarn sollen 1 ergeben.",
+                    trainBtn: "Ein Paar trainieren",
+                    stepsTaken: "Schritte:",
+                    calcTitle: "Trainingsberechnung",
+                    target: "Zielwort (t)",
+                    context: "Kontextwort (u)",
+                    dot: "Skalarprodukt (t · u)",
+                    pred: "Vorhersage",
+                    backprop: "Backpropagation",
+                    label: "Ziel-Label",
+                    error: "Fehler (1 - pred)",
+                    adjustment: "Vektoren angepasst durch Fehler",
+                    matrixE: "Matrix E (Ziel)",
+                    matrixU: "Matrix U (Kontext)",
+                    updating: "Aktualisierung:"
+                },
+                s8: {
+                    complete: "Training abgeschlossen!",
+                    info: "Nach tausenden Durchläufen ist Tabelle E unser Endprodukt. Tabelle U wird verworfen.",
+                    finalEmbed: "Finale Einbettungen (Tabelle E)",
+                    heatmap: "*Dunkleres Blau = Höhere Magnitude",
+                    whatNow: "Was nun?",
+                    semantic: { title: "Semantische Suche", desc: "Finde 'Essen', auch bei Suche nach 'Abendbrot'."},
+                    math: { title: "Vektormathematik", desc: "König - Mann + Frau ≈ Königin."},
+                    cluster: { title: "Clustering", desc: "Nachrichten automatisch gruppieren."}
+                }
+            },
+            pt: {
+                title: "Explorador de Embeddings",
+                step: "Passo",
+                of: "de",
+                process: "Processo",
+                prev: "Anterior",
+                next: "Próximo",
+                steps: {
+                    1: { title: "Corpus", desc: "Reunir o texto fonte." },
+                    2: { title: "Vocabulário", desc: "Filtrar e escolher palavras distintas (M)." },
+                    3: { title: "Janela de Contexto", desc: "Definir tamanho da janela (C)." },
+                    4: { title: "Dicionário", desc: "Construir estatísticas de co-ocorrência." },
+                    5: { title: "Dimensões", desc: "Escolher tamanho do embedding (N)." },
+                    6: { title: "Inicializar", desc: "Criar matrizes aleatórias E e U." },
+                    7: { title: "Treinar", desc: "Aprender via Produto Escalar e Gradiente." },
+                    8: { title: "Finalizar", desc: "Descartar U, manter E." },
+                },
+                s1: {
+                    label: "Editar Texto do Corpus:",
+                    count: "Palavras:",
+                    info: "O corpus determina tudo. Se 'Shakespeare' for o corpus, o modelo aprende relações antigas.",
+                    defaultText: "Não farás uma máquina à semelhança da mente humana"
+                },
+                s2: {
+                    filtering: "Filtragem",
+                    vocabLimit: "Limite de Vocabulário (M)",
+                    strict: "Estrito",
+                    current: "Atual",
+                    words: "palavras",
+                    all: "Todos",
+                    resulting: "Vocabulário Resultante",
+                    ignored: "ignorado",
+                    preprocessing: "Pré-processamento aplicado:",
+                    rules: [
+                        "Conversão para minúsculas",
+                        "Remoção de pontuação",
+                        "Normalização de espaços"
+                    ]
+                },
+                s3: {
+                    windowSize: "Tamanho da Janela (C):",
+                    target: "Alvo (t)",
+                    context: "Contexto",
+                    explainer: (n) => `Olhamos ${n} palavras à esquerda e ${n} palavras à direita.`
+                },
+                s4: {
+                    targetHead: "Palavra Alvo",
+                    contextHead: "Palavras de Contexto (C={n})",
+                    info: "Este dicionário é construído deslizando a janela por todo o corpus.",
+                    noContext: "Sem contexto"
+                },
+                s5: {
+                    title: "Escolher Dimensão (N)",
+                    tiny: "Minúsculo",
+                    small: "Pequeno",
+                    info: "Embeddings reais usam N = 300. N maior captura relações mais sutis mas usa mais memória."
+                },
+                s6: {
+                    info: "Criamos duas matrizes aleatórias. E é para Palavra Alvo. U é para Palavra de Contexto.",
+                    tableE: "Tabela E (Embeddings Alvo)",
+                    tableU: "Tabela U (Embeddings Contexto)",
+                    reinit: "Re-inicializar Aleatoriamente"
+                },
+                s7: {
+                    info: "Deslizamos a janela, calculamos produto escalar (0-1). Vizinhos devem dar 1.",
+                    trainBtn: "Treinar um Par",
+                    stepsTaken: "Passos:",
+                    calcTitle: "Cálculo de Treino",
+                    target: "Palavra Alvo (t)",
+                    context: "Palavra Contexto (u)",
+                    dot: "Produto Escalar (t · u)",
+                    pred: "Predição (Sigmoide)",
+                    backprop: "Backpropagation",
+                    label: "Rótulo Alvo",
+                    error: "Erro (1 - pred)",
+                    adjustment: "Vetores ajustados por erro",
+                    matrixE: "Matriz E (Alvo)",
+                    matrixU: "Matriz U (Contexto)",
+                    updating: "Atualizando:"
+                },
+                s8: {
+                    complete: "Treinamento Completo!",
+                    info: "Após milhares de passos, Tabela E é o produto final. Tabela U é descartada.",
+                    finalEmbed: "Embeddings Finais (Tabela E)",
+                    heatmap: "*Azul mais escuro = Maior magnitude",
+                    whatNow: "O que podemos fazer agora?",
+                    semantic: { title: "Busca Semântica", desc: "Encontrar 'comida' mesmo se busca 'jantar'."},
+                    math: { title: "Matemática Vetorial", desc: "Rei - Homem + Mulher ≈ Rainha."},
+                    cluster: { title: "Clusterização", desc: "Agrupar notícias por tópico."}
+                }
+            }
+        };
+
+        // --- Icons ---
+        // Inline definitions to replace lucide-react for single-file portability
+        const Icons = {
+            BookOpen: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+            Scissors: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" x2="8.12" y1="4" y2="15.88"/><line x1="14.47" x2="20" y1="14.48" y2="20"/><line x1="8.12" x2="12" y1="8.12" y2="12"/></svg>,
+            ScanEye: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M5 12s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>,
+            Table2: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4h6z"/><path d="M9 21H5a2 2 0 0 1-2-2v-4h6z"/><path d="M21 3h-4v6h6V5a2 2 0 0 0-2-2z"/><path d="M21 21h-4v-6h6v4a2 2 0 0 1-2 2z"/><path d="M3 9h18v6H3z"/></svg>,
+            Ruler: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>,
+            Grid3X3: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>,
+            BrainCircuit: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.125A3 3 0 0 1 19.5 5.6"/><path d="M12 18a4 4 0 0 0 4-3.464 4.004 4.004 0 0 0 3.46-3.463"/><path d="M20.961 11.076a4 4 0 1 0-1.922 4.975"/></svg>,
+            CheckCircle2: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>,
+            ChevronRight: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>,
+            ChevronLeft: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>,
+            RefreshCw: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>,
+            Play: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+            Calculator: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
+            Search: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+            Math: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>,
+            Cluster: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="5" r="3"/><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/></svg>,
+            Globe: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        };
+
+        // --- Helper Functions ---
+
+        const cleanText = (text) => {
+            return text
+                .toLowerCase()
+                .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+                .replace(/\s{2,}/g, " ")
+                .trim()
+                .split(" ");
+        };
+
+        const sigmoid = (z) => 1 / (1 + Math.exp(-z));
+
+        // --- Components ---
+
+        const StepHeader = ({ currentStep, totalSteps, title, description, Icon, t }) => (
+            <div className="mb-6 border-b border-gray-200 pb-4">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
+                        <Icon size={24} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">{t.step} {currentStep}: {title}</h2>
+                        <span className="text-sm text-gray-500">{t.process} {currentStep} {t.of} {totalSteps}</span>
+                    </div>
+                </div>
+                <p className="text-gray-700 leading-relaxed max-w-3xl">{description}</p>
+            </div>
+        );
+
+        const MatrixGrid = ({ data, highlightRow, title, color = "blue" }) => {
+            const vectorLength = data?.[0]?.vector?.length || 1;
+            const vectors = data?.[0]?.vector || [];
+
+            return (
+                <div className="bg-white p-4 rounded-lg shadow border border-gray-200 overflow-x-auto">
+                    <h3 className="font-semibold text-gray-700 mb-2 text-center">{title}</h3>
+                    <div className="grid gap-1" style={{ gridTemplateColumns: `auto repeat(${vectorLength}, minmax(40px, 1fr))` }}>
+                        {/* Header */}
+                        <div className="h-8"></div>
+                        {vectors.map((_, i) => (
+                            <div key={i} className="h-8 flex items-center justify-center text-xs text-gray-400 font-mono">
+                                d{i}
+                            </div>
+                        ))}
+                        
+                        {/* Rows */}
+                        {data.map((row, rIdx) => (
+                            <Fragment key={rIdx}>
+                                <div className={`h-8 px-2 flex items-center justify-end text-xs font-bold font-mono ${highlightRow === rIdx ? 'text-blue-600 bg-blue-50' : 'text-gray-500'}`}>
+                                    {row.word}
+                                </div>
+                                {row.vector.map((val, cIdx) => (
+                                    <div 
+                                        key={cIdx} 
+                                        className={`h-8 flex items-center justify-center text-[10px] font-mono transition-colors duration-300
+                                            ${highlightRow === rIdx ? `bg-${color}-100 font-bold text-${color}-800 border-${color}-200` : 'bg-gray-50 text-gray-400'}
+                                            border rounded-sm
+                                        `}
+                                        title={val.toFixed(4)}
+                                    >
+                                        {val.toFixed(2)}
+                                    </div>
+                                ))}
+                            </Fragment>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main Application ---
+
+        const App = () => {
+            const [lang, setLang] = useState('en');
+            const [isLangOpen, setIsLangOpen] = useState(false);
+            const [step, setStep] = useState(1);
+            
+            // Translations object for current lang
+            const t = TRANSLATIONS[lang];
+
+            // State for the embedding simulation
+            const [corpusText, setCorpusText] = useState(TRANSLATIONS['en'].s1.defaultText);
+            const [windowSize, setWindowSize] = useState(2);
+            const [embeddingSize, setEmbeddingSize] = useState(4); 
+            const [vocabLimit, setVocabLimit] = useState(50000); 
+            
+            // Computed State
+            const tokens = useMemo(() => cleanText(corpusText), [corpusText]);
+            const uniqueTokens = useMemo(() => [...new Set(tokens)], [tokens]);
+            const vocab = useMemo(() => uniqueTokens.slice(0, vocabLimit), [uniqueTokens, vocabLimit]);
+            
+            // Matrix State
+            const [matrixE, setMatrixE] = useState([]);
+            const [matrixU, setMatrixU] = useState([]);
+            
+            // Training Simulation State
+            const [trainingIndex, setTrainingIndex] = useState(2);
+            const [trainingEpoch, setTrainingEpoch] = useState(0);
+            const [lastLog, setLastLog] = useState(null);
+
+            // Update corpus when language changes (unless user manually typed something very different, but for simplicity we reset)
+            useEffect(() => {
+                setCorpusText(TRANSLATIONS[lang].s1.defaultText);
+            }, [lang]);
+
+            useEffect(() => {
+                if (vocab.length > 0) {
+                    const initMatrix = () => vocab.map(w => ({
+                        word: w,
+                        vector: Array.from({ length: embeddingSize }, () => Math.random() * 0.5 - 0.25)
+                    }));
+                    setMatrixE(initMatrix());
+                    setMatrixU(initMatrix());
+                }
+            }, [vocab, embeddingSize]);
+
+            const coOccurrence = useMemo(() => {
+                const dict = {};
+                vocab.forEach(w => dict[w] = new Set());
+
+                tokens.forEach((target, i) => {
+                    // Look back
+                    for (let j = 1; j <= windowSize; j++) {
+                        if (i - j >= 0) {
+                            const contextWord = tokens[i - j];
+                            if (vocab.includes(target) && vocab.includes(contextWord)) {
+                                dict[target].add(contextWord);
+                            }
+                        }
+                    }
+                    // Look forward
+                    for (let j = 1; j <= windowSize; j++) {
+                        if (i + j < tokens.length) {
+                            const contextWord = tokens[i + j];
+                            if (vocab.includes(target) && vocab.includes(contextWord)) {
+                                dict[target].add(contextWord);
+                            }
+                        }
+                    }
+                });
+                return dict;
+            }, [tokens, vocab, windowSize]);
+
+            const renderStepContent = () => {
+                switch(step) {
+                    case 1:
+                        return (
+                            <div className="space-y-6">
+                                <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        {t.s1.label}
+                                    </label>
+                                    <textarea
+                                        className="w-full p-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-serif text-lg leading-relaxed"
+                                        rows={4}
+                                        value={corpusText}
+                                        onChange={(e) => setCorpusText(e.target.value)}
+                                    />
+                                    <div className="mt-2 text-right text-xs text-gray-500">
+                                        {t.s1.count} {tokens.length}
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-blue-50 p-4 rounded-lg text-blue-800 text-sm">
+                                    <p>
+                                        {t.s1.info}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+
+                    case 2:
+                        return (
+                            <div className="space-y-6">
+                                <div className="flex flex-col md:flex-row gap-8">
+                                    <div className="flex-1 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                            <Icons.Scissors className="w-4 h-4" /> {t.s2.filtering}
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-sm text-gray-600">{t.s2.vocabLimit}</label>
+                                                <input 
+                                                    type="range" 
+                                                    min="5" 
+                                                    max={uniqueTokens.length} 
+                                                    value={vocabLimit > uniqueTokens.length ? uniqueTokens.length : vocabLimit}
+                                                    onChange={(e) => setVocabLimit(Number(e.target.value))}
+                                                    className="w-full mt-2"
+                                                />
+                                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                                    <span>{t.s2.strict}</span>
+                                                    <span>{t.s2.current}: {vocab.length} {t.s2.words}</span>
+                                                    <span>{t.s2.all} ({uniqueTokens.length})</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                                                <p className="mb-2"><strong>{t.s2.preprocessing}</strong></p>
+                                                <ul className="list-disc pl-4 space-y-1">
+                                                    {t.s2.rules.map((rule, idx) => <li key={idx}>{rule}</li>)}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-gray-800 mb-2">{t.s2.resulting}</h3>
+                                        <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200 min-h-[200px] content-start">
+                                            {vocab.map((word, i) => (
+                                                <span key={i} className="px-2 py-1 bg-white border border-gray-300 rounded text-sm text-gray-700 font-mono shadow-sm">
+                                                    {word}
+                                                </span>
+                                            ))}
+                                            {uniqueTokens.length > vocabLimit && (
+                                                <span className="px-2 py-1 bg-gray-200 text-gray-500 text-xs rounded">
+                                                    +{uniqueTokens.length - vocabLimit} {t.s2.ignored}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+
+                    case 3:
+                        return (
+                            <div className="space-y-8">
+                                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <label className="font-semibold text-gray-700">{t.s3.windowSize} {windowSize}</label>
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => setWindowSize(Math.max(1, windowSize - 1))}
+                                                className="p-2 hover:bg-gray-100 rounded-full border"
+                                            >
+                                                <Icons.ChevronLeft size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => setWindowSize(Math.min(5, windowSize + 1))}
+                                                className="p-2 hover:bg-gray-100 rounded-full border"
+                                            >
+                                                <Icons.ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative bg-gray-100 p-8 rounded-xl overflow-x-auto">
+                                        <div className="flex flex-wrap gap-3 items-center justify-center font-serif text-lg">
+                                            {tokens.map((word, idx) => {
+                                                const centerIdx = Math.floor(tokens.length / 2);
+                                                const isCenter = idx === centerIdx;
+                                                const isContext = idx >= centerIdx - windowSize && idx <= centerIdx + windowSize && !isCenter;
+                                                
+                                                return (
+                                                    <div key={idx} className="relative group">
+                                                        <span className={`
+                                                            relative z-10 px-3 py-2 rounded-lg transition-all duration-300
+                                                            ${isCenter ? 'bg-blue-600 text-white shadow-lg scale-110 font-bold' : ''}
+                                                            ${isContext ? 'bg-green-100 text-green-800 border-2 border-green-400' : 'text-gray-400 opacity-50'}
+                                                        `}>
+                                                            {word}
+                                                        </span>
+                                                        
+                                                        {isCenter && (
+                                                            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-sans font-bold text-blue-600 whitespace-nowrap">
+                                                                {t.s3.target}
+                                                            </div>
+                                                        )}
+                                                        {isContext && (
+                                                            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-sans font-semibold text-green-600 whitespace-nowrap">
+                                                                {t.s3.context}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="mt-12 text-center text-sm text-gray-500">
+                                            {t.s3.explainer(windowSize)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+
+                    case 4:
+                        return (
+                            <div className="space-y-6">
+                                <div className="flex flex-col lg:flex-row gap-6">
+                                    <div className="flex-1 space-y-4">
+                                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm">
+                                            {t.s4.info}
+                                        </div>
+                                        <div className="h-[400px] overflow-y-auto border border-gray-200 rounded-lg shadow-sm bg-white">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-gray-50 sticky top-0">
+                                                    <tr>
+                                                        <th className="px-4 py-3 font-semibold text-gray-700 border-b">{t.s4.targetHead}</th>
+                                                        <th className="px-4 py-3 font-semibold text-gray-700 border-b">{t.s4.contextHead.replace('{n}', windowSize)}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {vocab.map((word) => (
+                                                        <tr key={word} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 font-medium text-blue-700 font-mono bg-white">{word}</td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {Array.from(coOccurrence[word] || []).map((ctx, i) => (
+                                                                        <span key={i} className="px-2 py-0.5 bg-green-50 text-green-700 rounded border border-green-100 text-xs">
+                                                                            {ctx}
+                                                                        </span>
+                                                                    ))}
+                                                                    {(!coOccurrence[word] || coOccurrence[word].size === 0) && (
+                                                                        <span className="text-gray-400 italic">{t.s4.noContext}</span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+
+                    case 5:
+                        return (
+                            <div className="space-y-8">
+                                <div className="bg-white p-8 rounded-lg border border-gray-200 shadow-sm text-center">
+                                    <h3 className="text-lg font-semibold mb-6">{t.s5.title}</h3>
+                                    
+                                    <div className="flex items-center justify-center gap-8 mb-8">
+                                        <div className="w-64">
+                                            <input 
+                                                type="range" 
+                                                min="2" 
+                                                max="8" 
+                                                step="1"
+                                                value={embeddingSize}
+                                                onChange={(e) => setEmbeddingSize(Number(e.target.value))}
+                                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                            />
+                                            <div className="flex justify-between mt-2 text-xs text-gray-500 font-mono">
+                                                <span>2 ({t.s5.tiny})</span>
+                                                <span>8 ({t.s5.small})</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-4xl font-bold text-blue-600 font-mono">
+                                            N = {embeddingSize}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-center items-center gap-2">
+                                        <span className="font-mono font-bold text-gray-700">word_vector = [</span>
+                                        {Array.from({ length: embeddingSize }).map((_, i) => (
+                                            <div key={i} className="w-12 h-12 bg-blue-100 border-2 border-blue-300 rounded flex items-center justify-center text-xs font-mono text-blue-800 animate-pulse">
+                                                0.###
+                                            </div>
+                                        ))}
+                                        <span className="font-mono font-bold text-gray-700">]</span>
+                                    </div>
+                                    
+                                    <p className="mt-8 text-gray-500 max-w-lg mx-auto">
+                                        {t.s5.info}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+
+                    case 6:
+                        return (
+                            <div className="space-y-6">
+                                <div className="bg-blue-50 p-4 rounded-lg text-blue-800 text-sm mb-4">
+                                    {t.s6.info}
+                                </div>
+                                
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <MatrixGrid data={matrixE} title={t.s6.tableE} color="blue" />
+                                    <MatrixGrid data={matrixU} title={t.s6.tableU} color="green" />
+                                </div>
+                                
+                                <div className="flex justify-center mt-4">
+                                    <button 
+                                        onClick={() => {
+                                            const initMatrix = () => vocab.map(w => ({
+                                                word: w,
+                                                vector: Array.from({ length: embeddingSize }, () => Math.random() * 0.5 - 0.25)
+                                            }));
+                                            setMatrixE(initMatrix());
+                                            setMatrixU(initMatrix());
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
+                                    >
+                                        <Icons.RefreshCw size={16} /> {t.s6.reinit}
+                                    </button>
+                                </div>
+                            </div>
+                        );
+
+                    case 7:
+                        const trainStep = () => {
+                            let currentIdx = trainingIndex;
+                            let targetWord = tokens[currentIdx];
+                            
+                            while(!vocab.includes(targetWord)) {
+                                currentIdx = (currentIdx + 1) % tokens.length;
+                                targetWord = tokens[currentIdx];
+                            }
+                            
+                            const possibleOffsets = [];
+                            for (let i = -windowSize; i <= windowSize; i++) {
+                                if (i===0) continue;
+                                if (currentIdx + i >= 0 && currentIdx + i < tokens.length) {
+                                    possibleOffsets.push(i);
+                                }
+                            }
+                            const offset = possibleOffsets[Math.floor(Math.random() * possibleOffsets.length)];
+                            const contextWord = tokens[currentIdx + offset];
+
+                            if (!contextWord || !vocab.includes(contextWord)) {
+                                setTrainingIndex((currentIdx + 1) % tokens.length); 
+                                return;
+                            }
+
+                            const targetRowIdx = matrixE.findIndex(r => r.word === targetWord);
+                            const contextRowIdx = matrixU.findIndex(r => r.word === contextWord);
+                            
+                            const e_vec = [...matrixE[targetRowIdx].vector];
+                            const u_vec = [...matrixU[contextRowIdx].vector];
+
+                            let dot = 0;
+                            for(let i=0; i<embeddingSize; i++) dot += e_vec[i] * u_vec[i];
+                            const prediction = sigmoid(dot);
+
+                            const learningRate = 0.1;
+                            const error = 1 - prediction;
+                            
+                            const new_e = [...e_vec];
+                            const new_u = [...u_vec];
+
+                            for(let i=0; i<embeddingSize; i++) {
+                                new_e[i] += learningRate * error * u_vec[i];
+                                new_u[i] += learningRate * error * e_vec[i];
+                            }
+
+                            const nextE = [...matrixE];
+                            nextE[targetRowIdx] = { ...nextE[targetRowIdx], vector: new_e };
+                            
+                            const nextU = [...matrixU];
+                            nextU[contextRowIdx] = { ...nextU[contextRowIdx], vector: new_u };
+
+                            setMatrixE(nextE);
+                            setMatrixU(nextU);
+                            setTrainingIndex((currentIdx + 1) % tokens.length);
+                            setLastLog({ target: targetWord, context: contextWord, dot: dot, pred: prediction, error: error });
+                            setTrainingEpoch(p => p + 1);
+                        };
+
+                        return (
+                            <div className="space-y-6">
+                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center sticky top-0 z-10">
+                                    <p className="text-gray-600 mb-4 text-center">
+                                        {t.s7.info}
+                                    </p>
+                                    
+                                    <button 
+                                        onClick={trainStep}
+                                        className="flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 shadow-lg transform active:scale-95 transition-all"
+                                    >
+                                        <Icons.Play fill="currentColor" /> {t.s7.trainBtn}
+                                    </button>
+                                    <span className="text-xs text-gray-400 mt-2">{t.s7.stepsTaken} {trainingEpoch}</span>
+                                </div>
+
+                                {lastLog && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                                        
+                                        {/* 1. Visual Explanation of what just happened */}
+                                        <div className="bg-slate-900 text-green-400 font-mono p-6 rounded-lg shadow-xl overflow-hidden relative border border-slate-700">
+                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="text-white border-b border-slate-700 pb-2 mb-2 font-bold flex items-center gap-2">
+                                                        <Icons.Calculator size={16} /> {t.s7.calcTitle}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                                                        <div className="text-gray-400">{t.s7.target}:</div>
+                                                        <div className="text-yellow-400 font-bold">"{lastLog.target}"</div>
+                                                        
+                                                        <div className="text-gray-400">{t.s7.context}:</div>
+                                                        <div className="text-cyan-400 font-bold">"{lastLog.context}"</div>
+                                                        
+                                                        <div className="text-gray-400 mt-2">{t.s7.dot}:</div>
+                                                        <div className="text-white mt-2 font-bold">{lastLog.dot.toFixed(4)}</div>
+                                                        
+                                                        <div className="text-gray-400">{t.s7.pred}:</div>
+                                                        <div className="text-white font-bold">{lastLog.pred.toFixed(4)}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex-1 bg-slate-800 p-4 rounded border border-slate-600 w-full md:w-auto">
+                                                    <div className="text-xs text-slate-400 uppercase tracking-wider mb-2">{t.s7.backprop}</div>
+                                                    <div className="space-y-1 text-sm">
+                                                        <div className="flex justify-between">
+                                                            <span>{t.s7.label}:</span>
+                                                            <span className="text-white">1.0</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>{t.s7.error}:</span>
+                                                            <span className="text-red-400 font-bold">{lastLog.error.toFixed(4)}</span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 mt-2 italic">
+                                                            {t.s7.adjustment}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 2. Side-by-Side Matrices */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <div className="text-center font-bold text-gray-700 flex items-center justify-center gap-2">
+                                                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div> 
+                                                    {t.s7.matrixE}
+                                                </div>
+                                                <div className="border-2 border-yellow-400/50 rounded-lg overflow-hidden relative shadow-md">
+                                                    <MatrixGrid 
+                                                        data={matrixE} 
+                                                        title="" 
+                                                        highlightRow={matrixE.findIndex(x => x.word === lastLog.target)} 
+                                                        color="yellow"
+                                                    />
+                                                    <div className="absolute top-0 right-0 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-bl border-b border-l border-yellow-200 font-bold">
+                                                        {t.s7.updating} "{lastLog.target}"
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <div className="text-center font-bold text-gray-700 flex items-center justify-center gap-2">
+                                                    <div className="w-3 h-3 bg-cyan-400 rounded-full"></div> 
+                                                    {t.s7.matrixU}
+                                                </div>
+                                                <div className="border-2 border-cyan-400/50 rounded-lg overflow-hidden relative shadow-md">
+                                                    <MatrixGrid 
+                                                        data={matrixU} 
+                                                        title="" 
+                                                        highlightRow={matrixU.findIndex(x => x.word === lastLog.context)}
+                                                        color="cyan"
+                                                    />
+                                                    <div className="absolute top-0 right-0 bg-cyan-100 text-cyan-800 text-xs px-2 py-1 rounded-bl border-b border-l border-cyan-200 font-bold">
+                                                        {t.s7.updating} "{lastLog.context}"
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+
+                    case 8:
+                        return (
+                            <div className="space-y-8">
+                                <div className="bg-green-50 p-6 rounded-lg border border-green-200 text-center">
+                                    <div className="flex justify-center mb-4 text-green-600"><Icons.CheckCircle2 size={48} /></div>
+                                    <h3 className="text-2xl font-bold text-green-900 mb-2">{t.s8.complete}</h3>
+                                    <p className="text-green-800">
+                                        {t.s8.info}
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                        <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">{t.s8.finalEmbed}</h4>
+                                        <div className="overflow-y-auto max-h-[400px]">
+                                            {matrixE.map((row, i) => (
+                                                <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                                                    <span className="font-bold text-gray-700 w-24">{row.word}</span>
+                                                    <div className="flex-1 flex gap-1 justify-end">
+                                                        {row.vector.map((v, k) => (
+                                                            <div 
+                                                                key={k} 
+                                                                className="w-8 h-8 rounded text-[9px] flex items-center justify-center text-white font-mono"
+                                                                style={{ backgroundColor: `rgba(59, 130, 246, ${Math.abs(v) * 2})` }}
+                                                            >
+                                                                {v.toFixed(1)}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-4 text-xs text-gray-500 text-right">
+                                            {t.s8.heatmap}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                                        <h4 className="font-bold text-gray-700 mb-4">{t.s8.whatNow}</h4>
+                                        <ul className="space-y-4">
+                                            <li className="flex gap-3">
+                                                <div className="bg-white p-2 rounded shadow-sm h-fit"><Icons.Search className="text-purple-600" /></div>
+                                                <div>
+                                                    <strong className="block text-gray-900">{t.s8.semantic.title}</strong>
+                                                    <span className="text-sm text-gray-600">{t.s8.semantic.desc}</span>
+                                                </div>
+                                            </li>
+                                            <li className="flex gap-3">
+                                                <div className="bg-white p-2 rounded shadow-sm h-fit"><Icons.Math className="text-orange-600" /></div>
+                                                <div>
+                                                    <strong className="block text-gray-900">{t.s8.math.title}</strong>
+                                                    <span className="text-sm text-gray-600">{t.s8.math.desc}</span>
+                                                </div>
+                                            </li>
+                                            <li className="flex gap-3">
+                                                <div className="bg-white p-2 rounded shadow-sm h-fit"><Icons.Cluster className="text-pink-600" /></div>
+                                                <div>
+                                                    <strong className="block text-gray-900">{t.s8.cluster.title}</strong>
+                                                    <span className="text-sm text-gray-600">{t.s8.cluster.desc}</span>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    
+                    default:
+                        return null;
+                }
+            };
+
+            const stepsInfo = [
+                { id: 1, title: t.steps[1].title, desc: t.steps[1].desc, icon: Icons.BookOpen },
+                { id: 2, title: t.steps[2].title, desc: t.steps[2].desc, icon: Icons.Scissors },
+                { id: 3, title: t.steps[3].title, desc: t.steps[3].desc, icon: Icons.ScanEye },
+                { id: 4, title: t.steps[4].title, desc: t.steps[4].desc, icon: Icons.Table2 },
+                { id: 5, title: t.steps[5].title, desc: t.steps[5].desc, icon: Icons.Ruler },
+                { id: 6, title: t.steps[6].title, desc: t.steps[6].desc, icon: Icons.Grid3X3 },
+                { id: 7, title: t.steps[7].title, desc: t.steps[7].desc, icon: Icons.BrainCircuit },
+                { id: 8, title: t.steps[8].title, desc: t.steps[8].desc, icon: Icons.CheckCircle2 },
+            ];
+
+            return (
+                <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+                    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+                        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                {t.title}
+                            </h1>
+                            
+                            <div className="flex items-center gap-4">
+                                {/* Language Selector */}
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setIsLangOpen(!isLangOpen)}
+                                        className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        <Icons.Globe size={18} />
+                                        <span className="uppercase">{lang}</span>
+                                    </button>
+                                    
+                                    {isLangOpen && (
+                                        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-32 z-50">
+                                            <button onClick={() => { setLang('en'); setIsLangOpen(false); }} className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${lang==='en'?'font-bold text-blue-600':''}`}>English</button>
+                                            <button onClick={() => { setLang('es'); setIsLangOpen(false); }} className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${lang==='es'?'font-bold text-blue-600':''}`}>Español</button>
+                                            <button onClick={() => { setLang('de'); setIsLangOpen(false); }} className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${lang==='de'?'font-bold text-blue-600':''}`}>Deutsch</button>
+                                            <button onClick={() => { setLang('pt'); setIsLangOpen(false); }} className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${lang==='pt'?'font-bold text-blue-600':''}`}>Português</button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="text-sm text-gray-500 hidden sm:block">
+                                    {t.step} {step} {t.of} 8
+                                </div>
+                            </div>
+                        </div>
+                        <div className="h-1 bg-gray-100 w-full">
+                            <div 
+                                className="h-full bg-blue-600 transition-all duration-500 ease-out" 
+                                style={{ width: `${(step / 8) * 100}%` }}
+                            />
+                        </div>
+                    </header>
+
+                    <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col md:flex-row gap-8">
+                        <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
+                            {stepsInfo.map((s, idx) => {
+                                const stepNum = idx + 1;
+                                const isActive = step === stepNum;
+                                const isPast = step > stepNum;
+                                const SIcon = s.icon; 
+                                
+                                return (
+                                    <button
+                                        key={stepNum}
+                                        onClick={() => setStep(stepNum)}
+                                        className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors
+                                            ${isActive ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' : 'hover:bg-gray-100 text-gray-600'}
+                                        `}
+                                    >
+                                        <div className={`
+                                            w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+                                            ${isActive ? 'bg-blue-600 text-white' : isPast ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}
+                                        `}>
+                                            {isPast ? <Icons.CheckCircle2 size={14} /> : stepNum}
+                                        </div>
+                                        <span className={`text-sm font-medium ${isActive ? 'font-bold' : ''}`}>
+                                            {s.title}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+
+                        <main className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 min-h-[600px] flex flex-col">
+                            <div className="p-8 flex-1">
+                                <StepHeader 
+                                    currentStep={step} 
+                                    totalSteps={8} 
+                                    title={stepsInfo[step-1].title} 
+                                    description={stepsInfo[step-1].desc}
+                                    Icon={stepsInfo[step-1].icon}
+                                    t={t}
+                                />
+                                
+                                <div className="mt-6 animate-in fade-in duration-500">
+                                    {renderStepContent()}
+                                </div>
+                            </div>
+
+                            <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-between items-center">
+                                <button
+                                    onClick={() => setStep(Math.max(1, step - 1))}
+                                    disabled={step === 1}
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                    <Icons.ChevronLeft size={16} /> {t.prev}
+                                </button>
+                                
+                                <button
+                                    onClick={() => setStep(Math.min(8, step + 1))}
+                                    disabled={step === 8}
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-transform hover:scale-105"
+                                >
+                                    {t.next} <Icons.ChevronRight size={16} />
+                                </button>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
