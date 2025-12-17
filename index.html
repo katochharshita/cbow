@@ -39,7 +39,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, Fragment } = React;
 
-        // --- Translations ---
+        // --- Translations & Tour Data ---
         const TRANSLATIONS = {
             en: {
                 title: "Word Embeddings Explorer",
@@ -48,6 +48,10 @@
                 process: "Process",
                 prev: "Previous",
                 next: "Next Step",
+                startTour: "Explain this Step",
+                tourNext: "Next",
+                tourPrev: "Back",
+                tourClose: "Close",
                 steps: {
                     1: { title: "Corpus", desc: "Assemble the raw text source." },
                     2: { title: "Vocabulary", desc: "Filter and choose distinct words (M)." },
@@ -57,6 +61,23 @@
                     6: { title: "Initialize", desc: "Create random matrices E and U." },
                     7: { title: "Train", desc: "Learn via Dot Product & Gradient Descent." },
                     8: { title: "Finalize", desc: "Discard U, keep E." },
+                },
+                tour: {
+                    s1_input: { title: "The Corpus", text: "This is your training data. The model learns entirely from this text. Try changing it!" },
+                    s1_stats: { title: "Word Count", text: "Size matters. Small corpora learn fast but generalize poorly. Large corpora take longer." },
+                    s2_filter: { title: "Vocabulary Limit", text: "We discard rare words (like typos) to save memory and focus on important concepts." },
+                    s2_list: { title: "Token List", text: "These are the actual 'tokens' the model will learn. Notice punctuation is gone." },
+                    s3_ctrl: { title: "Window Size", text: "This controls how far neighbors are considered 'related'. Larger windows capture broader topics." },
+                    s3_vis: { title: "Sliding Window", text: "We move this frame one word at a time to generate training pairs (Target vs Context)." },
+                    s4_table: { title: "Co-occurrence", text: "This counts how often words appear together. It's the raw data for learning." },
+                    s5_slider: { title: "Dimensions (N)", text: "The size of the vector. 300 is standard. Here we use 4-8 for visualization." },
+                    s5_vis: { title: "Vector Representation", text: "Each word becomes a list of numbers like this. This is the 'Embedding'." },
+                    s6_matrices: { title: "Random Initialization", text: "We start with random noise. Training will refine these numbers over time." },
+                    s7_btn: { title: "Training Step", text: "Click this to simulate one training step. It picks a random pair from the corpus." },
+                    s7_calc: { title: "The Math", text: "We calculate similarity (dot product) and compare it to the truth (1 or 0), then calculate Error." },
+                    s7_matrix: { title: "Live Updates", text: "Watch these specific rows change slightly to reduce the error for next time." },
+                    s8_final: { title: "The Result", text: "Table E holds our final meaningful word vectors. Table U is usually discarded." },
+                    s8_apps: { title: "Applications", text: "These vectors can now be used for search, math, or clustering." }
                 },
                 s1: {
                     label: "Edit Corpus Text:",
@@ -139,6 +160,10 @@
                 process: "Proceso",
                 prev: "Anterior",
                 next: "Siguiente",
+                startTour: "Explicar este Paso",
+                tourNext: "Siguiente",
+                tourPrev: "Atrás",
+                tourClose: "Cerrar",
                 steps: {
                     1: { title: "Corpus", desc: "Reunir la fuente de texto." },
                     2: { title: "Vocabulario", desc: "Filtrar y elegir palabras distintas (M)." },
@@ -148,6 +173,23 @@
                     6: { title: "Inicializar", desc: "Crear matrices aleatorias E y U." },
                     7: { title: "Entrenar", desc: "Aprender vía Producto Punto y Gradiente." },
                     8: { title: "Finalizar", desc: "Descartar U, mantener E." },
+                },
+                tour: {
+                    s1_input: { title: "El Corpus", text: "Estos son tus datos de entrenamiento. El modelo aprende completamente de este texto." },
+                    s1_stats: { title: "Conteo de Palabras", text: "El tamaño importa. Los corpus pequeños aprenden rápido pero generalizan mal." },
+                    s2_filter: { title: "Límite de Vocabulario", text: "Descartamos palabras raras (como errores tipográficos) para ahorrar memoria." },
+                    s2_list: { title: "Lista de Tokens", text: "Estos son los 'tokens' reales que el modelo aprenderá. Nota que no hay puntuación." },
+                    s3_ctrl: { title: "Tamaño de Ventana", text: "Controla qué tan lejos se consideran 'relacionados' los vecinos." },
+                    s3_vis: { title: "Ventana Deslizante", text: "Movemos este marco una palabra a la vez para generar pares de entrenamiento." },
+                    s4_table: { title: "Co-ocurrencia", text: "Cuenta con qué frecuencia aparecen las palabras juntas." },
+                    s5_slider: { title: "Dimensiones (N)", text: "El tamaño del vector. 300 es estándar." },
+                    s5_vis: { title: "Representación Vectorial", text: "Cada palabra se convierte en una lista de números como esta." },
+                    s6_matrices: { title: "Inicialización Aleatoria", text: "Comenzamos con ruido aleatorio. El entrenamiento refinará estos números." },
+                    s7_btn: { title: "Paso de Entrenamiento", text: "Haz clic para simular un paso de entrenamiento." },
+                    s7_calc: { title: "La Matemática", text: "Calculamos similitud y la comparamos con la verdad." },
+                    s7_matrix: { title: "Actualizaciones en Vivo", text: "Mira cómo cambian estas filas específicas para reducir el error." },
+                    s8_final: { title: "El Resultado", text: "La Tabla E contiene nuestros vectores finales." },
+                    s8_apps: { title: "Aplicaciones", text: "Estos vectores ahora se pueden usar para búsqueda o matemáticas." }
                 },
                 s1: {
                     label: "Editar Texto del Corpus:",
@@ -230,6 +272,10 @@
                 process: "Prozess",
                 prev: "Zurück",
                 next: "Weiter",
+                startTour: "Erklären",
+                tourNext: "Weiter",
+                tourPrev: "Zurück",
+                tourClose: "Schließen",
                 steps: {
                     1: { title: "Korpus", desc: "Sammeln Sie den Rohtext." },
                     2: { title: "Vokabular", desc: "Filtern und wählen Sie Wörter (M)." },
@@ -239,6 +285,23 @@
                     6: { title: "Initialisierung", desc: "Erstellen Sie zufällige Matrizen E und U." },
                     7: { title: "Training", desc: "Lernen durch Skalarprodukt & Gradientenabstieg." },
                     8: { title: "Abschluss", desc: "Verwerfen Sie U, behalten Sie E." },
+                },
+                tour: {
+                    s1_input: { title: "Der Korpus", text: "Dies sind Ihre Trainingsdaten. Das Modell lernt vollständig aus diesem Text." },
+                    s1_stats: { title: "Wortanzahl", text: "Größe ist wichtig. Kleine Korpora lernen schnell, verallgemeinern aber schlecht." },
+                    s2_filter: { title: "Vokabulargrenze", text: "Wir verwerfen seltene Wörter (wie Tippfehler), um Speicher zu sparen." },
+                    s2_list: { title: "Token-Liste", text: "Dies sind die tatsächlichen 'Token', die das Modell lernen wird." },
+                    s3_ctrl: { title: "Fenstergröße", text: "Steuert, wie weit Nachbarn als 'verwandt' gelten." },
+                    s3_vis: { title: "Gleitendes Fenster", text: "Wir verschieben diesen Rahmen Wort für Wort, um Trainingspaare zu generieren." },
+                    s4_table: { title: "Kookkurrenz", text: "Zählt, wie oft Wörter zusammen vorkommen." },
+                    s5_slider: { title: "Dimensionen (N)", text: "Die Größe des Vektors. 300 ist Standard." },
+                    s5_vis: { title: "Vektordarstellung", text: "Jedes Wort wird zu einer Liste von Zahlen wie dieser." },
+                    s6_matrices: { title: "Zufallsinitialisierung", text: "Wir beginnen mit zufälligem Rauschen." },
+                    s7_btn: { title: "Trainingsschritt", text: "Klicken Sie hier, um einen Trainingsschritt zu simulieren." },
+                    s7_calc: { title: "Die Mathematik", text: "Wir berechnen Ähnlichkeit und vergleichen sie mit der Wahrheit." },
+                    s7_matrix: { title: "Live-Updates", text: "Beobachten Sie, wie sich diese Werte ändern, um den Fehler zu reduzieren." },
+                    s8_final: { title: "Das Ergebnis", text: "Tabelle E enthält unsere finalen Wortvektoren." },
+                    s8_apps: { title: "Anwendungen", text: "Diese Vektoren können für Suche oder Mathematik verwendet werden." }
                 },
                 s1: {
                     label: "Korpus-Text bearbeiten:",
@@ -321,6 +384,10 @@
                 process: "Processo",
                 prev: "Anterior",
                 next: "Próximo",
+                startTour: "Explicar Passo",
+                tourNext: "Próximo",
+                tourPrev: "Voltar",
+                tourClose: "Fechar",
                 steps: {
                     1: { title: "Corpus", desc: "Reunir o texto fonte." },
                     2: { title: "Vocabulário", desc: "Filtrar e escolher palavras distintas (M)." },
@@ -330,6 +397,23 @@
                     6: { title: "Inicializar", desc: "Criar matrizes aleatórias E e U." },
                     7: { title: "Treinar", desc: "Aprender via Produto Escalar e Gradiente." },
                     8: { title: "Finalizar", desc: "Descartar U, manter E." },
+                },
+                tour: {
+                    s1_input: { title: "O Corpus", text: "Estes são seus dados de treinamento. O modelo aprende inteiramente deste texto." },
+                    s1_stats: { title: "Contagem", text: "O tamanho importa. Corpora pequenos aprendem rápido, mas generalizam mal." },
+                    s2_filter: { title: "Limite de Vocabulário", text: "Descartamos palavras raras para economizar memória." },
+                    s2_list: { title: "Lista de Tokens", text: "Estes são os 'tokens' reais que o modelo aprenderá." },
+                    s3_ctrl: { title: "Tamanho da Janela", text: "Controla o quão longe os vizinhos são considerados 'relacionados'." },
+                    s3_vis: { title: "Janela Deslizante", text: "Movemos este quadro uma palavra por vez para gerar pares." },
+                    s4_table: { title: "Co-ocorrência", text: "Conta com que frequência as palavras aparecem juntas." },
+                    s5_slider: { title: "Dimensões (N)", text: "O tamanho do vetor. 300 é padrão." },
+                    s5_vis: { title: "Representação Vetorial", text: "Cada palavra se torna uma lista de números como esta." },
+                    s6_matrices: { title: "Inicialização", text: "Começamos com ruído aleatório." },
+                    s7_btn: { title: "Passo de Treino", text: "Clique para simular um passo de treinamento." },
+                    s7_calc: { title: "A Matemática", text: "Calculamos a similaridade e comparamos com a verdade." },
+                    s7_matrix: { title: "Atualizações", text: "Veja esses valores mudarem para reduzir o erro." },
+                    s8_final: { title: "O Resultado", text: "A Tabela E contém nossos vetores finais." },
+                    s8_apps: { title: "Aplicações", text: "Esses vetores agora podem ser usados para busca ou matemática." }
                 },
                 s1: {
                     label: "Editar Texto do Corpus:",
@@ -426,7 +510,8 @@
             Search: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
             Math: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>,
             Cluster: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="5" r="3"/><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/></svg>,
-            Globe: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Globe: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+            HelpCircle: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
         };
 
         // --- Helper Functions ---
@@ -443,28 +528,136 @@
         const sigmoid = (z) => 1 / (1 + Math.exp(-z));
 
         // --- Components ---
+        
+        // Tour Guide Component
+        const TourGuide = ({ steps, onClose, t }) => {
+            const [currentIdx, setCurrentIdx] = useState(0);
+            const [rect, setRect] = useState(null);
 
-        const StepHeader = ({ currentStep, totalSteps, title, description, Icon, t }) => (
+            const activeStep = steps[currentIdx];
+            
+            useEffect(() => {
+                if (!activeStep) return;
+                
+                const element = document.querySelector(`[data-tour="${activeStep.target}"]`);
+                if (element) {
+                    const r = element.getBoundingClientRect();
+                    // Handle scrolling to element if needed, simplified here
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setRect(r);
+                } else {
+                    // Skip if element not found in DOM
+                    if (currentIdx < steps.length - 1) setCurrentIdx(c => c + 1);
+                }
+                
+                // Update rect on resize
+                const handleResize = () => {
+                    const el = document.querySelector(`[data-tour="${activeStep.target}"]`);
+                    if (el) setRect(el.getBoundingClientRect());
+                }
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, [currentIdx, activeStep, steps]);
+
+            if (!activeStep || !rect) return null;
+
+            return (
+                <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center">
+                    {/* Backdrop with cutout simulation using heavy border */}
+                    <div 
+                        className="absolute inset-0 bg-black/50 transition-all duration-300 pointer-events-none"
+                    ></div>
+                    
+                    {/* Spotlight Box */}
+                    <div 
+                        className="absolute transition-all duration-300 border-2 border-white rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] pointer-events-none z-10"
+                        style={{
+                            top: rect.top - 4,
+                            left: rect.left - 4,
+                            width: rect.width + 8,
+                            height: rect.height + 8,
+                        }}
+                    >
+                         {/* Pulse effect */}
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                        </span>
+                    </div>
+
+                    {/* Tooltip Card - Positioned relative to screen mostly for simplicity in this demo */}
+                    <div className="relative z-20 bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4 mb-8 sm:mb-0 animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="flex justify-between items-start mb-2">
+                            <h3 className="font-bold text-lg text-gray-900">{activeStep.title}</h3>
+                            <span className="text-xs font-mono text-gray-400">{currentIdx + 1} / {steps.length}</span>
+                        </div>
+                        <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+                            {activeStep.text}
+                        </p>
+                        
+                        <div className="flex justify-between items-center">
+                            <button 
+                                onClick={onClose}
+                                className="text-sm text-gray-400 hover:text-gray-600"
+                            >
+                                {t.tourClose}
+                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setCurrentIdx(Math.max(0, currentIdx - 1))}
+                                    disabled={currentIdx === 0}
+                                    className="px-3 py-1.5 text-sm rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    {t.tourPrev}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (currentIdx >= steps.length - 1) onClose();
+                                        else setCurrentIdx(currentIdx + 1);
+                                    }}
+                                    className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 shadow-sm"
+                                >
+                                    {currentIdx === steps.length - 1 ? t.tourClose : t.tourNext}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {/* Triangle arrow simulation (approximate) */}
+                        <div className="absolute w-4 h-4 bg-white transform rotate-45 -z-10 bottom-[-8px] left-1/2 -translate-x-1/2 sm:bottom-auto sm:top-[-8px]"></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const StepHeader = ({ currentStep, totalSteps, title, description, Icon, t, onStartTour }) => (
             <div className="mb-6 border-b border-gray-200 pb-4">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
-                        <Icon size={24} />
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
+                            <Icon size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">{t.step} {currentStep}: {title}</h2>
+                            <span className="text-sm text-gray-500">{t.process} {currentStep} {t.of} {totalSteps}</span>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-900">{t.step} {currentStep}: {title}</h2>
-                        <span className="text-sm text-gray-500">{t.process} {currentStep} {t.of} {totalSteps}</span>
-                    </div>
+                    <button 
+                        onClick={onStartTour}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors font-medium"
+                    >
+                        <Icons.HelpCircle size={16} /> {t.startTour}
+                    </button>
                 </div>
                 <p className="text-gray-700 leading-relaxed max-w-3xl">{description}</p>
             </div>
         );
 
-        const MatrixGrid = ({ data, highlightRow, title, color = "blue" }) => {
+        const MatrixGrid = ({ data, highlightRow, title, color = "blue", tourId }) => {
             const vectorLength = data?.[0]?.vector?.length || 1;
             const vectors = data?.[0]?.vector || [];
 
             return (
-                <div className="bg-white p-4 rounded-lg shadow border border-gray-200 overflow-x-auto">
+                <div data-tour={tourId} className="bg-white p-4 rounded-lg shadow border border-gray-200 overflow-x-auto">
                     <h3 className="font-semibold text-gray-700 mb-2 text-center">{title}</h3>
                     <div className="grid gap-1" style={{ gridTemplateColumns: `auto repeat(${vectorLength}, minmax(40px, 1fr))` }}>
                         {/* Header */}
@@ -507,6 +700,9 @@
             const [isLangOpen, setIsLangOpen] = useState(false);
             const [step, setStep] = useState(1);
             
+            // Tour State
+            const [isTourOpen, setIsTourOpen] = useState(false);
+
             // Translations object for current lang
             const t = TRANSLATIONS[lang];
 
@@ -530,7 +726,12 @@
             const [trainingEpoch, setTrainingEpoch] = useState(0);
             const [lastLog, setLastLog] = useState(null);
 
-            // Update corpus when language changes (unless user manually typed something very different, but for simplicity we reset)
+            // Reset tour when step changes
+            useEffect(() => {
+                setIsTourOpen(false);
+            }, [step]);
+
+            // Update corpus when language changes
             useEffect(() => {
                 setCorpusText(TRANSLATIONS[lang].s1.defaultText);
             }, [lang]);
@@ -573,12 +774,51 @@
                 return dict;
             }, [tokens, vocab, windowSize]);
 
+            // Define tour steps dynamically based on current step
+            const getTourSteps = () => {
+                const tourData = t.tour;
+                switch(step) {
+                    case 1: return [
+                        { target: "s1-input", ...tourData.s1_input },
+                        { target: "s1-stats", ...tourData.s1_stats }
+                    ];
+                    case 2: return [
+                        { target: "s2-filter", ...tourData.s2_filter },
+                        { target: "s2-list", ...tourData.s2_list }
+                    ];
+                    case 3: return [
+                        { target: "s3-ctrl", ...tourData.s3_ctrl },
+                        { target: "s3-vis", ...tourData.s3_vis }
+                    ];
+                    case 4: return [
+                        { target: "s4-table", ...tourData.s4_table }
+                    ];
+                    case 5: return [
+                        { target: "s5-slider", ...tourData.s5_slider },
+                        { target: "s5-vis", ...tourData.s5_vis }
+                    ];
+                    case 6: return [
+                        { target: "s6-matrices", ...tourData.s6_matrices }
+                    ];
+                    case 7: return [
+                        { target: "s7-btn", ...tourData.s7_btn },
+                        { target: "s7-calc", ...tourData.s7_calc },
+                        { target: "s7-matrices", ...tourData.s7_matrix }
+                    ];
+                    case 8: return [
+                        { target: "s8-final", ...tourData.s8_final },
+                        { target: "s8-apps", ...tourData.s8_apps }
+                    ];
+                    default: return [];
+                }
+            };
+
             const renderStepContent = () => {
                 switch(step) {
                     case 1:
                         return (
                             <div className="space-y-6">
-                                <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                                <div data-tour="s1-input" className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         {t.s1.label}
                                     </label>
@@ -588,7 +828,7 @@
                                         value={corpusText}
                                         onChange={(e) => setCorpusText(e.target.value)}
                                     />
-                                    <div className="mt-2 text-right text-xs text-gray-500">
+                                    <div data-tour="s1-stats" className="mt-2 text-right text-xs text-gray-500">
                                         {t.s1.count} {tokens.length}
                                     </div>
                                 </div>
@@ -605,7 +845,7 @@
                         return (
                             <div className="space-y-6">
                                 <div className="flex flex-col md:flex-row gap-8">
-                                    <div className="flex-1 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                    <div data-tour="s2-filter" className="flex-1 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                                         <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                                             <Icons.Scissors className="w-4 h-4" /> {t.s2.filtering}
                                         </h3>
@@ -636,7 +876,7 @@
                                         </div>
                                     </div>
 
-                                    <div className="flex-1">
+                                    <div data-tour="s2-list" className="flex-1">
                                         <h3 className="font-semibold text-gray-800 mb-2">{t.s2.resulting}</h3>
                                         <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200 min-h-[200px] content-start">
                                             {vocab.map((word, i) => (
@@ -659,7 +899,7 @@
                         return (
                             <div className="space-y-8">
                                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                                    <div className="flex items-center justify-between mb-6">
+                                    <div data-tour="s3-ctrl" className="flex items-center justify-between mb-6">
                                         <label className="font-semibold text-gray-700">{t.s3.windowSize} {windowSize}</label>
                                         <div className="flex gap-2">
                                             <button 
@@ -677,7 +917,7 @@
                                         </div>
                                     </div>
 
-                                    <div className="relative bg-gray-100 p-8 rounded-xl overflow-x-auto">
+                                    <div data-tour="s3-vis" className="relative bg-gray-100 p-8 rounded-xl overflow-x-auto">
                                         <div className="flex flex-wrap gap-3 items-center justify-center font-serif text-lg">
                                             {tokens.map((word, idx) => {
                                                 const centerIdx = Math.floor(tokens.length / 2);
@@ -724,7 +964,7 @@
                                         <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm">
                                             {t.s4.info}
                                         </div>
-                                        <div className="h-[400px] overflow-y-auto border border-gray-200 rounded-lg shadow-sm bg-white">
+                                        <div data-tour="s4-table" className="h-[400px] overflow-y-auto border border-gray-200 rounded-lg shadow-sm bg-white">
                                             <table className="w-full text-sm text-left">
                                                 <thead className="bg-gray-50 sticky top-0">
                                                     <tr>
@@ -764,7 +1004,7 @@
                                 <div className="bg-white p-8 rounded-lg border border-gray-200 shadow-sm text-center">
                                     <h3 className="text-lg font-semibold mb-6">{t.s5.title}</h3>
                                     
-                                    <div className="flex items-center justify-center gap-8 mb-8">
+                                    <div data-tour="s5-slider" className="flex items-center justify-center gap-8 mb-8">
                                         <div className="w-64">
                                             <input 
                                                 type="range" 
@@ -785,7 +1025,7 @@
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-center items-center gap-2">
+                                    <div data-tour="s5-vis" className="flex justify-center items-center gap-2">
                                         <span className="font-mono font-bold text-gray-700">word_vector = [</span>
                                         {Array.from({ length: embeddingSize }).map((_, i) => (
                                             <div key={i} className="w-12 h-12 bg-blue-100 border-2 border-blue-300 rounded flex items-center justify-center text-xs font-mono text-blue-800 animate-pulse">
@@ -809,7 +1049,7 @@
                                     {t.s6.info}
                                 </div>
                                 
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div data-tour="s6-matrices" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     <MatrixGrid data={matrixE} title={t.s6.tableE} color="blue" />
                                     <MatrixGrid data={matrixU} title={t.s6.tableU} color="green" />
                                 </div>
@@ -893,7 +1133,7 @@
 
                         return (
                             <div className="space-y-6">
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center sticky top-0 z-10">
+                                <div data-tour="s7-btn" className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center sticky top-0 z-10">
                                     <p className="text-gray-600 mb-4 text-center">
                                         {t.s7.info}
                                     </p>
@@ -911,7 +1151,7 @@
                                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                                         
                                         {/* 1. Visual Explanation of what just happened */}
-                                        <div className="bg-slate-900 text-green-400 font-mono p-6 rounded-lg shadow-xl overflow-hidden relative border border-slate-700">
+                                        <div data-tour="s7-calc" className="bg-slate-900 text-green-400 font-mono p-6 rounded-lg shadow-xl overflow-hidden relative border border-slate-700">
                                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                                                 <div className="flex-1 space-y-2">
                                                     <div className="text-white border-b border-slate-700 pb-2 mb-2 font-bold flex items-center gap-2">
@@ -952,7 +1192,7 @@
                                         </div>
 
                                         {/* 2. Side-by-Side Matrices */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <div data-tour="s7-matrices" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                             <div className="space-y-2">
                                                 <div className="text-center font-bold text-gray-700 flex items-center justify-center gap-2">
                                                     <div className="w-3 h-3 bg-yellow-400 rounded-full"></div> 
@@ -964,6 +1204,7 @@
                                                         title="" 
                                                         highlightRow={matrixE.findIndex(x => x.word === lastLog.target)} 
                                                         color="yellow"
+                                                        tourId="s7-e-matrix"
                                                     />
                                                     <div className="absolute top-0 right-0 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-bl border-b border-l border-yellow-200 font-bold">
                                                         {t.s7.updating} "{lastLog.target}"
@@ -982,6 +1223,7 @@
                                                         title="" 
                                                         highlightRow={matrixU.findIndex(x => x.word === lastLog.context)}
                                                         color="cyan"
+                                                        tourId="s7-u-matrix"
                                                     />
                                                     <div className="absolute top-0 right-0 bg-cyan-100 text-cyan-800 text-xs px-2 py-1 rounded-bl border-b border-l border-cyan-200 font-bold">
                                                         {t.s7.updating} "{lastLog.context}"
@@ -1006,7 +1248,7 @@
                                 </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                    <div data-tour="s8-final" className="bg-white p-6 rounded-lg shadow border border-gray-200">
                                         <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">{t.s8.finalEmbed}</h4>
                                         <div className="overflow-y-auto max-h-[400px]">
                                             {matrixE.map((row, i) => (
@@ -1031,7 +1273,7 @@
                                         </div>
                                     </div>
 
-                                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                                    <div data-tour="s8-apps" className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                                         <h4 className="font-bold text-gray-700 mb-4">{t.s8.whatNow}</h4>
                                         <ul className="space-y-4">
                                             <li className="flex gap-3">
@@ -1079,6 +1321,15 @@
 
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+                    {/* Tour Component Overlay */}
+                    {isTourOpen && (
+                        <TourGuide 
+                            steps={getTourSteps()} 
+                            onClose={() => setIsTourOpen(false)}
+                            t={t}
+                        />
+                    )}
+
                     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
                         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
                             <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -1157,6 +1408,7 @@
                                     description={stepsInfo[step-1].desc}
                                     Icon={stepsInfo[step-1].icon}
                                     t={t}
+                                    onStartTour={() => setIsTourOpen(true)}
                                 />
                                 
                                 <div className="mt-6 animate-in fade-in duration-500">
@@ -1192,4 +1444,3 @@
     </script>
 </body>
 </html>
-
